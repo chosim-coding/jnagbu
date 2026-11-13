@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모임 회비 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet">
+<style>
+/* 경조사비 장부와 같은 계열. 왼쪽 입력·오른쪽 결과, 휴대폰에서는 한 줄 */
+:root{
+  --paper:#f3f4f7; --card:#ffffff; --ink:#1c2230; --muted:#566074; --line:#d6dbe4;
+  --accent:#2c4677; --accent-ink:#ffffff; --accent-soft:#e3e9f4;
+  --in:#1d6a4e; --in-soft:#e2f1ea; --out:#9c3a2e; --out-soft:#f6e5e2;
+  --display:"Noto Serif KR", "Nanum Myeongjo", serif;
+  --body:"Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#13161c; --card:#1c2029; --ink:#e9ecf1; --muted:#a4acbb; --line:#323846;
+    --accent:#93acdc; --accent-ink:#0f1218; --accent-soft:#263147;
+    --in:#72cba6; --in-soft:#18302a; --out:#ee9488; --out-soft:#36201d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#13161c; --card:#1c2029; --ink:#e9ecf1; --muted:#a4acbb; --line:#323846;
+  --accent:#93acdc; --accent-ink:#0f1218; --accent-soft:#263147;
+  --in:#72cba6; --in-soft:#18302a; --out:#ee9488; --out-soft:#36201d;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{font-size:18px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 60px;display:flex;flex-direction:column;gap:20px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:2rem} h2{font-size:1.25rem}
+h3{margin:0;font-size:1.02rem}
+.top{border-bottom:2px solid var(--ink);padding-bottom:16px;display:flex;flex-direction:column;gap:4px}
+.top p{margin:0;color:var(--muted)}
+.panel[hidden]{display:none}
+.panel{display:flex;flex-direction:column;gap:20px}
+input,select{font:inherit;font-size:1.02rem;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:10px;padding:10px 12px;min-height:52px;width:100%}
+input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card.editing{border:2px solid var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.lbl{font-weight:700}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:46px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);font-size:.98rem}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.member{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);border-radius:999px;padding:4px 6px 4px 14px;font-weight:500}
+.member button{background:none;border:0;color:var(--muted);min-width:36px;min-height:36px;border-radius:50%;font-size:1.1rem}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;min-height:56px;font-size:1.08rem;font-weight:700;padding:0 20px}
+.secondary{background:var(--card);color:var(--accent);border:2px solid var(--accent);border-radius:12px;min-height:52px;font-size:.98rem;font-weight:700;padding:0 16px}
+.small{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;min-height:42px;padding:0 12px;font-size:.85rem}
+.small.edit{color:var(--accent);border-color:var(--accent)}
+.small.armed{border-color:var(--out);color:var(--out);font-weight:700}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.error{color:var(--out);font-weight:700;margin:0}
+.error:empty{display:none}
+.note{color:var(--muted);font-size:.9rem;margin:0}
+.notice{background:var(--accent-soft);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.notice[hidden]{display:none}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column}
+.tile span{color:var(--muted);font-size:.85rem}
+.tile strong{font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.35}
+.tile.in strong{color:var(--in)} .tile.out strong{color:var(--out)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .sub{color:var(--muted);font-size:.86rem}
+.money{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.money.in{color:var(--in)} .money.out{color:var(--out)}
+.btns{display:flex;gap:6px}
+.empty{color:var(--muted);margin:0}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.85rem;color:var(--muted);font-weight:700;background:var(--paper)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+th:first-child{background:var(--paper)}
+tr:last-child td{border-bottom:0}
+tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.pay{min-width:52px;min-height:44px;border-radius:10px;border:2px dashed var(--line);background:var(--card);color:var(--muted);font-weight:700}
+.pay[aria-pressed="true"]{border-style:solid;border-color:var(--in);background:var(--in-soft);color:var(--in)}
+td.c{text-align:center;padding:6px}
+.xfer{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.xfer li{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--out-soft);border-radius:10px;padding:12px 14px;font-size:1.05rem}
+.xfer li strong{color:var(--out);font-variant-numeric:tabular-nums}
+.xfer .arrow{color:var(--muted);margin:0 6px}
+.done{background:var(--in-soft);color:var(--in);border-radius:10px;padding:12px 14px;font-weight:700}
+.unpaid{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.unpaid li{border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.unpaid li strong{min-width:4.5em}
+.mpill{background:var(--out-soft);color:var(--out);border-radius:999px;padding:1px 10px;font-size:.88rem;font-weight:700}
+.unpaid .money{margin-left:auto}
+.startrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.startrow strong{font-size:1.1rem}
+.startbox{display:flex;flex-direction:column;gap:8px;background:var(--paper);border-radius:10px;padding:12px}
+.startbox[hidden]{display:none}
+.winnav{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.winnav select{text-align:center;text-align-last:center;font-weight:700;font-size:.82rem;padding:8px 4px;min-height:46px;min-width:0}
+.winnav button:disabled{opacity:.4;cursor:not-allowed}
+th.future{color:var(--accent)}
+th small{display:block;font-weight:500;font-size:.72rem}
+@media (max-width:480px){ .winnav{grid-template-columns:1fr 1fr} .winnav select{grid-column:1/-1;grid-row:1} }
+.copybox{width:100%;min-height:160px;font:inherit;font-size:.9rem;border:2px solid var(--line);border-radius:10px;padding:10px;background:var(--paper);color:var(--ink)}
+.copybox[hidden]{display:none}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:14px 22px;border-radius:12px;max-width:min(92vw,560px);display:flex;gap:14px;align-items:center;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:5}
+#toast[hidden]{display:none}
+#toast button{background:none;border:1px solid var(--paper);color:var(--paper);border-radius:8px;padding:6px 12px}
+@media (max-width:860px){
+  .grid{grid-template-columns:1fr}
+  .tiles{grid-template-columns:1fr 1fr}
+  .item{grid-template-columns:minmax(0,1fr) auto}
+  .item .btns{grid-column:1/-1;justify-content:flex-end}
+}
+@media (prefers-reduced-motion:no-preference){button{transition:background .15s,border-color .15s}}
+.itemrows{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.itemrow{display:grid;grid-template-columns:minmax(0,1fr) 9.5em 44px;gap:8px;align-items:center}
+.itemrow .x{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:1.1rem}
+.mtsum{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--line);padding-top:10px;margin-bottom:6px}
+.mtsum strong{font-size:1.35rem;color:var(--out);font-variant-numeric:tabular-nums}
+.pager{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.pager span{text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.pager button{min-height:46px}
+.pager button:disabled{opacity:.4;cursor:not-allowed}
+.pager[hidden]{display:none}
+.copybox{min-height:260px;line-height:1.55;resize:vertical}
+.flow td.neg{color:var(--out);font-weight:700}
+.back{align-self:flex-start;color:var(--accent);font-weight:700;text-decoration:none;font-size:.95rem;padding:6px 0}
+.back:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="back" href="index.html">← 모임 및 장부 관리</a>
+    <h1>모임 회비 관리</h1>
+    <p>회원별로 낸 달을 체크하면 걷은 회비, 쓴 돈, 남은 돈과 밀린 회비를 바로 알려 드려요.</p>
+  </header>
+
+  <main class="panel" id="club">
+    <div id="clubSample" class="notice" hidden>
+      <span>지금 보이는 내용은 <strong>예시</strong>(동네 산악회)예요. 둘러보신 뒤 지우고 시작하세요.</span>
+      <button type="button" class="secondary" id="clubClear">예시 지우고 새로 시작</button>
+    </div>
+    <div class="grid">
+      <div class="col">
+        <section class="card">
+          <h2>1. 모임 정보</h2>
+          <div class="field"><label for="clubTitle">모임 이름</label><input id="clubTitle" autocomplete="off" placeholder="예: 동네 산악회"></div>
+          <div class="row2">
+            <div class="field"><label for="clubFee">한 달 회비 (원)</label><input id="clubFee" inputmode="numeric" autocomplete="off"></div>
+            <div class="field"><label for="clubCarry">처음 남아 있던 돈 (원)</label><input id="clubCarry" inputmode="numeric" autocomplete="off" placeholder="없으면 0"></div>
+          </div>
+          <div class="field">
+            <span class="lbl">시작 달</span>
+            <div class="startrow"><strong id="clubStartText"></strong><button type="button" class="small edit" id="clubStartEdit">시작 달 바꾸기</button></div>
+            <div id="clubStartBox" class="startbox" hidden>
+              <input type="month" id="clubStart" aria-label="새 시작 달">
+              <div class="actions"><button type="button" class="secondary" id="clubStartSave">이 달로 바꾸기</button><button type="button" class="small" id="clubStartCancel">취소</button></div>
+              <p class="note">시작 달보다 앞선 달의 체크 기록은 지워지지 않고 표와 합계에서만 빠져요.</p>
+            </div>
+            <p class="note">회비를 걷기 시작한 달이에요. 표는 오늘까지 저절로 이어져요.</p>
+          </div>
+          <div class="field"><label for="clubMemberIn">회원</label>
+            <div class="addrow"><input id="clubMemberIn" autocomplete="off" placeholder="이름 입력 후 추가"><button type="button" class="secondary" id="clubMemberAdd">추가</button></div>
+          </div>
+          <div class="chips" id="clubMembers"></div>
+        </section>
+
+        <section class="card">
+          <h2>2. 회비 낸 사람 체크</h2>
+          <div class="winnav">
+            <button type="button" class="secondary" id="winPrev">◀ 이전 3개월</button>
+            <select id="winSel" aria-label="볼 기간"></select>
+            <button type="button" class="secondary" id="winNext">다음 3개월 ▶</button>
+          </div>
+          <p class="note">낸 칸을 누르면 초록색으로 바뀌어요. 다시 누르면 취소돼요. 오른쪽 끝 칸은 시작 달부터 이번 달까지 밀린 회비예요.</p>
+          <div class="tbl-wrap"><table id="payGrid"></table></div>
+        </section>
+
+        <section class="card" id="mtCard">
+          <h2 id="mtTitle">3. 모임 때 쓴 돈</h2>
+          <p class="note">모임마다 쓴 내역을 적으면 오른쪽 회비 현황과 월별 흐름에 차곡차곡 쌓여요.</p>
+          <form id="mtForm" novalidate>
+            <div class="row2" style="margin-bottom:12px">
+              <div class="field"><label for="mtDate">모임 날짜</label><input type="date" id="mtDate"></div>
+              <div class="field"><label for="mtName">모임 이름</label><input id="mtName" autocomplete="off" placeholder="예: 11월 정기 산행"></div>
+            </div>
+            <div class="field" style="margin-bottom:12px">
+              <span class="lbl">쓴 내역</span>
+              <div class="chips" id="itemChips"></div>
+              <p class="note">자주 쓰는 항목을 누르면 아래에 한 줄이 생겨요.</p>
+              <div id="itemRows" class="itemrows"></div>
+              <button type="button" class="small" id="itemAdd" style="align-self:flex-start">+ 한 줄 더</button>
+            </div>
+            <div class="mtsum"><span>이 모임에서 쓴 돈</span><strong id="mtSum">0원</strong></div>
+            <p id="mtError" class="error" role="alert"></p>
+            <div class="actions"><button type="submit" class="primary" id="mtSave">모임 기록 저장</button><button type="button" class="secondary" id="mtCancel" hidden>고치기 취소</button></div>
+          </form>
+          <h3>지난 모임</h3>
+          <ul class="list" id="spendList"></ul>
+          <div class="pager" id="mtPager">
+            <button type="button" class="secondary" id="mtPrev">◀ 이전</button>
+            <span id="mtPageText" aria-live="polite"></span>
+            <button type="button" class="secondary" id="mtNext">다음 ▶</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card">
+          <h2>회비 현황</h2>
+          <div class="tiles">
+            <div class="tile in"><span>걷은 회비</span><strong id="cIn">0원</strong></div>
+            <div class="tile out"><span>쓴 돈</span><strong id="cOut">0원</strong></div>
+            <div class="tile"><span>지금 남은 돈</span><strong id="cLeft">0원</strong></div>
+          </div>
+          <p class="note" id="cCarryNote"></p>
+          <h3>월별 흐름</h3>
+          <div class="pager" id="flowPager">
+            <button type="button" class="secondary" id="flowPrev">◀ 이전 해</button>
+            <span id="flowYearText" aria-live="polite"></span>
+            <button type="button" class="secondary" id="flowNext">다음 해 ▶</button>
+          </div>
+          <div class="tbl-wrap flow"><table><thead><tr><th scope="col">달</th><th scope="col">그 달 회비</th><th scope="col">모임에 쓴 돈</th><th scope="col">달 말 남은 돈</th></tr></thead><tbody id="flowRows"></tbody><tfoot id="flowFoot"></tfoot></table></div>
+          <p class="note">회비는 낸 날이 아니라 해당하는 달에 더했어요. 최근 달이 위에 있어요.</p>
+          <h3>아직 안 낸 회비</h3>
+          <div id="unpaidBox"></div>
+        </section>
+        <section class="card">
+          <h2>보내기와 저장</h2>
+          <div class="actions">
+            <button type="button" class="primary" id="clubCopy">단톡방용 회비 안내 복사</button>
+            <button type="button" class="secondary" id="clubExport">엑셀로 저장하기</button>
+          </div>
+          <label class="lbl" for="clubCopyBox">미리 보기 <span class="note">(이 내용이 그대로 복사돼요)</span></label>
+          <textarea class="copybox" id="clubCopyBox" readonly></textarea>
+          <p class="note dlnote">입력한 내용은 이 기기에만 임시로 남아요. 오래 보관하려면 엑셀로 저장해 두세요.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden>되돌리기</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+/* ===== CORE (pure) ===== */
+function won(n){ return (Math.round(Number(n)||0)).toLocaleString('ko-KR')+'원'; }
+function numOf(s){ return Number(String(s||'').replace(/[^\d]/g,''))||0; }
+function monthsFrom(start,len){
+  var a=start.split('-'), y=+a[0], m=+a[1], out=[];
+  for(var i=0;i<len;i++){ out.push(y+'-'+String(m).padStart(2,'0')); m++; if(m>12){m=1;y++;} }
+  return out;
+}
+function monthLabel(ym,all){
+  var a=ym.split('-'), multi=all&&all.some(function(x){return x.slice(0,4)!==all[0].slice(0,4);});
+  return (multi?a[0].slice(2)+'.':'')+(+a[1])+'월';
+}
+
+function addMonths(ym,k){ var a=ym.split('-'), t=(+a[0])*12+(+a[1]-1)+k; return Math.floor(t/12)+'-'+String(t%12+1).padStart(2,'0'); }
+function monthsBetween(a,b){ var out=[], x=a; while(x<=b){ out.push(x); x=addMonths(x,1); } return out; }
+/* 시작 달부터 이번 달까지가 낼 달(due). 미리 낸 다음 달들은 표와 합계에만 들어감 */
+function clubStats(c,now){
+  var due=monthsBetween(c.start,now), maxYM=now<c.start?c.start:now, collected=0, unpaid=[];
+  c.members.forEach(function(m){ Object.keys(c.paid[m.id]||{}).forEach(function(ym){ if(c.paid[m.id][ym]&&ym>=c.start){ collected+=c.fee; if(ym>maxYM) maxYM=ym; } }); });
+  c.members.forEach(function(m){
+    var miss=due.filter(function(ym){return !(c.paid[m.id]&&c.paid[m.id][ym]);});
+    if(miss.length) unpaid.push({id:m.id,name:m.name,months:miss,amt:miss.length*c.fee});
+  });
+  var spent=c.spends.reduce(function(s,x){return s+meetTotal(x);},0);
+  return {months:monthsBetween(c.start,maxYM),due:due,collected:collected,spent:spent,left:c.carry+collected-spent,unpaid:unpaid,unpaidSum:unpaid.reduce(function(s,u){return s+u.amt;},0)};
+}
+/* 모임 하나 = 날짜·이름·쓴 내역 여러 줄. 예전 기록(한 줄짜리)도 그대로 읽음 */
+function meetItems(x){ return x.items&&x.items.length?x.items:[{name:x.title,amount:x.amount||0}]; }
+function meetTotal(x){ return meetItems(x).reduce(function(s,i){return s+(Number(i.amount)||0);},0); }
+/* 달마다 들어온 회비·쓴 돈·달 말 잔액. 시작 달 전 모임은 첫 달에 넣음 */
+function monthlyFlow(c,now){
+  var months=clubStats(c,now).months, last=months[months.length-1];
+  c.spends.forEach(function(x){ var ym=x.date.slice(0,7); if(ym>last) last=ym; });
+  months=monthsBetween(c.start,last);
+  var bal=c.carry;
+  return months.map(function(ym,i){
+    var inn=0; c.members.forEach(function(m){ if(c.paid[m.id]&&c.paid[m.id][ym]) inn+=c.fee; });
+    var ms=c.spends.filter(function(x){ var y=x.date.slice(0,7); return i===0?y<=ym:y===ym; });
+    var out=ms.reduce(function(s,x){return s+meetTotal(x);},0);
+    bal+=inn-out;
+    return {ym:ym,inn:inn,out:out,bal:bal,count:ms.length};
+  });
+}
+/* 3개월 묶음: 이번 달로 끝나는 최근 3개월을 기준으로 앞뒤로 나눔. 마지막 묶음은 미리 낼 다음 3개월 */
+function clubWindows(start,now){
+  var base=now<start?start:now, wins=[], end=base;
+  while(end>=start){ var s=addMonths(end,-2); wins.push(monthsBetween(s<start?start:s,end)); end=addMonths(end,-3); }
+  wins.reverse(); wins.push(monthsBetween(addMonths(base,1),addMonths(base,3)));
+  return wins;
+}
+function ymText(ym){ var a=ym.split('-'); return a[0]+'년 '+(+a[1])+'월'; }
+function windowLabel(w){
+  if(w.length===1) return ymText(w[0]);
+  var a=w[0].split('-'), b=w[w.length-1].split('-');
+  if(a[0]===b[0]) return a[0]+'년 '+(+a[1])+'~'+(+b[1])+'월';
+  return a[0].slice(2)+'년 '+(+a[1])+'월~'+b[0].slice(2)+'년 '+(+b[1])+'월';
+}
+
+function clubText(c,today,now){
+  var s=clubStats(c,now);
+  var L=['['+(c.title||'모임')+' 회비 현황] '+today+' 기준','걷은 회비 '+won(s.collected)+' / 쓴 돈 '+won(s.spent),'지금 남은 돈 '+won(s.left)];
+  if(c.carry) L.push('(처음 남아 있던 돈 '+won(c.carry)+' 포함)');
+  L.push('');
+  if(s.unpaid.length){ L.push('■ 아직 안 낸 회비 (한 달 '+won(c.fee)+', '+monthLabel(s.due[s.due.length-1],s.due)+'까지)'); s.unpaid.forEach(function(u){L.push('· '+u.name+': '+u.months.map(function(m){return monthLabel(m,s.due);}).join(', ')+' → '+won(u.amt));}); }
+  else L.push('■ 모두 냈어요. 감사합니다!');
+  return L.join('\n');
+}
+
+var XS={FONT:{name:'맑은 고딕',size:12},HEAD:{type:'pattern',pattern:'solid',fgColor:{argb:'FF2C4677'}},MONEY:'#,##0"원"'};
+XS.LINE={style:'thin',color:{argb:'FFC9CFDA'}}; XS.BOX={top:XS.LINE,left:XS.LINE,bottom:XS.LINE,right:XS.LINE};
+function xHead(row){ row.height=26; row.eachCell(function(c){ c.font={name:XS.FONT.name,size:12,bold:true,color:{argb:'FFFFFFFF'}}; c.fill=XS.HEAD; c.border=XS.BOX; c.alignment={vertical:'middle',horizontal:'center',wrapText:true}; }); }
+function xBody(row,n,money){ row.height=22; for(var i=1;i<=n;i++){ var c=row.getCell(i); c.border=XS.BOX; c.font=c.font&&c.font.bold?c.font:XS.FONT; if(money&&money.indexOf(i)>=0) c.numFmt=XS.MONEY; } }
+function xTitle(ws,ref,text){ ws.mergeCells(ref); var c=ws.getCell(ref.split(':')[0]); c.value=text; c.font={name:XS.FONT.name,size:16,bold:true}; ws.getRow(1).height=30; }
+
+function buildClubWb(X,c,now){
+  var s=clubStats(c,now), months=s.months, n=months.length, dueN=s.due.length;
+  var wb=new X.Workbook(); wb.creator='회비·경비 정산표';
+  var ws=wb.addWorksheet('회비 현황',{views:[{state:'frozen',xSplit:1,ySplit:6}]});
+  var cols=n+4; ws.getColumn(1).width=14; for(var k=2;k<=n+1;k++) ws.getColumn(k).width=9; ws.getColumn(n+2).width=10; ws.getColumn(n+3).width=14; ws.getColumn(n+4).width=14;
+  var L=function(i){ var s='';i++; while(i>0){var m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26);} return s; }; // 0-based → letter
+  xTitle(ws,'A1:'+L(Math.max(cols-1,5)),(c.title||'모임')+' 회비 장부');
+  var first=7, last=first+Math.max(c.members.length,1)-1+15;
+  var cntCol=L(n+1), paidCol=L(n+2), missCol=L(n+3), mLast=L(n);
+  ws.getCell('A2').value='한 달 회비'; ws.getCell('B2').value=c.fee; ws.getCell('B2').numFmt=XS.MONEY;
+  ws.getCell('A3').value='처음 남은 돈'; ws.getCell('B3').value=c.carry; ws.getCell('B3').numFmt=XS.MONEY;
+  ws.getCell('D2').value='걷은 회비'; ws.getCell('F2').value={formula:'SUM('+paidCol+first+':'+paidCol+last+')',result:s.collected};
+  var meetList=c.spends.slice().sort(function(a,b){return a.date<b.date?-1:1;});
+  var itemRows=[]; meetList.forEach(function(x){ meetItems(x).forEach(function(i){ itemRows.push([x.date,x.title,i.name,Number(i.amount)||0]); }); });
+  var spTotalRow=2+Math.max(itemRows.length,1)+30;
+  ws.getCell('D3').value='쓴 돈'; ws.getCell('F3').value={formula:"'모임 지출'!D"+spTotalRow,result:s.spent};
+  ws.getCell('D4').value='지금 남은 돈'; ws.getCell('F4').value={formula:'B3+F2-F3',result:s.left};
+  ['A2','A3','D2','D3','D4'].forEach(function(a){ws.getCell(a).font={name:XS.FONT.name,size:12,bold:true};});
+  ['F2','F3','F4'].forEach(function(a){var x=ws.getCell(a); x.numFmt=XS.MONEY; x.font={name:XS.FONT.name,size:13,bold:true}; x.alignment={horizontal:'left'};});
+  ws.getCell('A5').value='낸 달에 O를 적으면 합계가 저절로 바뀌어요. 안 낸 금액은 '+(dueN?ymText(s.due[dueN-1]):'')+'까지 기준이에요.'; ws.getCell('A5').font={name:XS.FONT.name,size:10,color:{argb:'FF566074'}};
+  ws.getRow(6).values=['이름'].concat(months.map(function(m){return monthLabel(m,months);}),['낸 달 수','낸 금액','안 낸 금액']); xHead(ws.getRow(6));
+  for(var r=first;r<=last;r++){
+    var m=c.members[r-first], row=ws.getRow(r), vals=[m?m.name:null];
+    var cnt=0;
+    months.forEach(function(ym){ var p=m&&c.paid[m.id]&&c.paid[m.id][ym]; if(p) cnt++; vals.push(p?'O':null); });
+    var A='A'+r, rng='B'+r+':'+mLast+r;
+    vals.push({formula:'IF('+A+'="","",COUNTIF('+rng+',"O"))',result:m?cnt:''});
+    vals.push({formula:'IF('+A+'="","",'+cntCol+r+'*$B$2)',result:m?cnt*c.fee:''});
+    var dueCnt=m?s.due.filter(function(ym){return c.paid[m.id]&&c.paid[m.id][ym];}).length:0;
+    vals.push(dueN?{formula:'IF('+A+'="","",('+dueN+'-COUNTIF(B'+r+':'+L(dueN)+r+',"O"))*$B$2)',result:m?(dueN-dueCnt)*c.fee:''}:(m?0:null));
+    row.values=vals; xBody(row,cols,[n+3,n+4]);
+    for(var q=2;q<=n+1;q++){ var cc=row.getCell(q); cc.alignment={horizontal:'center',vertical:'middle'}; cc.dataValidation={type:'list',allowBlank:true,formulae:['"O"']}; if(cc.value==='O'){ cc.font={name:XS.FONT.name,size:12,bold:true,color:{argb:'FF1D6A4E'}}; cc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2F1EA'}}; } }
+    row.getCell(n+2).alignment={horizontal:'center'};
+  }
+  var sp=wb.addWorksheet('모임 지출',{views:[{state:'frozen',ySplit:2}]});
+  [14,24,18,16].forEach(function(w,i){sp.getColumn(i+1).width=w;});
+  sp.getCell('A1').value='모임 때 쓴 돈'; sp.getCell('A1').font={name:XS.FONT.name,size:16,bold:true};
+  sp.getRow(2).values=['날짜','모임','항목','금액']; xHead(sp.getRow(2));
+  var sLast=spTotalRow;
+  for(var i=3;i<sLast;i++){
+    var x=itemRows[i-3], rw=sp.getRow(i);
+    if(x){ var d=x[0].split('-'); rw.values=[new Date(Date.UTC(+d[0],+d[1]-1,+d[2])),x[1],x[2],x[3]]; }
+    xBody(rw,4,[4]); rw.getCell(1).numFmt='yyyy-mm-dd';
+  }
+  var tr=sp.getRow(sLast); tr.values=['합계',null,null,{formula:'SUM(D3:D'+(sLast-1)+')',result:s.spent}]; xBody(tr,4,[4]);
+  tr.getCell(1).font={name:XS.FONT.name,size:12,bold:true}; tr.getCell(4).font={name:XS.FONT.name,size:12,bold:true};
+
+  var fl=wb.addWorksheet('월별 흐름',{views:[{state:'frozen',ySplit:2}]});
+  [12,16,16,18,10].forEach(function(w,i){fl.getColumn(i+1).width=w;});
+  fl.getCell('A1').value='월별 흐름'; fl.getCell('A1').font={name:XS.FONT.name,size:16,bold:true};
+  fl.getRow(2).values=['달','그 달 회비','모임에 쓴 돈','달 말 남은 돈','모임 수']; xHead(fl.getRow(2));
+  monthlyFlow(c,now).forEach(function(f,k){
+    var r=k+3, prev=k===0?"'회비 현황'!B3":'D'+(r-1);
+    fl.getRow(r).values=[ymText(f.ym),f.inn,f.out,{formula:prev+'+B'+r+'-C'+r,result:f.bal},f.count];
+    xBody(fl.getRow(r),5,[2,3,4]);
+  });
+  return wb;
+}
+/* ===== END CORE ===== */
+
+
+if(typeof document!=='undefined'){ (function(){
+  var KEY='moim-hoebi-v1';
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function uid(){ return 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function thisMonthMinus(k){ var d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-k); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+
+  function sampleClub(){
+    var M=['김영수','이정훈','박미경','최성호','정은주','한상우'].map(function(n,i){return {id:'c'+i,name:n};});
+    /* 17개월 동안 매달 한 번씩 모임 17번. 최근 몇 달은 안 낸 사람이 있음 */
+    var N=17, start=thisMonthMinus(N-1), months=monthsFrom(start,N), paid={};
+    M.forEach(function(m,i){ paid[m.id]={}; months.forEach(function(ym,j){
+      var miss=(i===3&&j>=N-2)||(i===5&&j===N-1)||(i===1&&j===N-6);
+      if(!miss) paid[m.id][ym]=true;
+    }); });
+    var T=[
+      {t:'정기 산행',items:[['점심 식사',120000],['음료·간식',30000]]},
+      {t:'월례 모임',items:[['식사',110000],['카페',26000]]},
+      {t:'둘레길 걷기',items:[['점심 식사',96000],['간식',18000]]},
+      {t:'정기 산행',items:[['점심 식사',132000],['음료·간식',34000]]},
+      {t:'계절 산행',items:[['버스 대여',250000],['김밥·물',48000]]},
+      {t:'월례 모임',items:[['식사',124000],['카페',22000]]}];
+    var spends=months.map(function(ym,j){
+      var k=T[j%T.length], day=String(6+(j*5)%20).padStart(2,'0');
+      return {id:'s'+j,date:ym+'-'+day,title:(+ym.slice(5))+'월 '+k.t,items:k.items.map(function(x){return {name:x[0],amount:x[1]};})};
+    });
+    return {sample:true,sampleVer:2,title:'동네 산악회',fee:30000,carry:120000,start:start,members:M,paid:paid,spends:spends};
+  }
+  var state={club:sampleClub()};
+  try{ var sv=JSON.parse(localStorage.getItem(KEY)||'null'); if(sv&&sv.club&&!(sv.club.sample&&sv.club.sampleVer!==2)) state.club=sv.club; }catch(e){}
+  state.club.spends=(state.club.spends||[]).map(function(x){ return x.items?x:{id:x.id,date:x.date,title:x.title,items:[{name:x.title,amount:x.amount}]}; });
+  function persist(){ try{ localStorage.setItem(KEY,JSON.stringify({club:state.club})); }catch(e){} }
+
+  var tTimer;
+  function toast(msg,undo){
+    $('toastMsg').textContent=msg; var a=$('toastAct'); a.hidden=!undo; a.onclick=function(){ if(undo) undo(); $('toast').hidden=true; };
+    $('toast').hidden=false; clearTimeout(tTimer); tTimer=setTimeout(function(){$('toast').hidden=true;},undo?7000:3500);
+  }
+  function snapshot(){ return JSON.parse(JSON.stringify(state.club)); }
+  function restore(s){ state.club=s; persist(); renderAll(); }
+  function armDelete(b,go){
+    if(!b.classList.contains('armed')){ b.classList.add('armed'); var t=b.textContent; b.textContent='정말 지우기'; setTimeout(function(){ if(b.isConnected){b.classList.remove('armed');b.textContent=t;} },4000); return; }
+    go();
+  }
+  function moneyInput(el){ el.addEventListener('input',function(){ var n=numOf(this.value); this.value=n?n.toLocaleString('ko-KR'):''; }); }
+
+
+  /* ===== CLUB ===== */
+  function nowYM(){ return thisMonthMinus(0); }
+  var winIdx=null, MT_PAGE=5, mtPage=0, flowYear=null;
+  $('mtPrev').onclick=function(){ mtPage--; renderClub(); };
+  $('mtNext').onclick=function(){ mtPage++; renderClub(); };
+  $('flowPrev').onclick=function(){ var ys=flowYears(); flowYear=ys[Math.max(0,ys.indexOf(flowYear)-1)]; renderClub(); };
+  $('flowNext').onclick=function(){ var ys=flowYears(); flowYear=ys[Math.min(ys.length-1,ys.indexOf(flowYear)+1)]; renderClub(); };
+  function flowYears(){ var ys=[]; monthlyFlow(state.club,nowYM()).forEach(function(f){ var y=f.ym.slice(0,4); if(ys.indexOf(y)<0) ys.push(y); }); return ys; }
+  function windows(){ return clubWindows(state.club.start,nowYM()); }
+  function defaultWin(){ return Math.max(windows().length-2,0); }
+  $('winPrev').onclick=function(){ winIdx=Math.max(0,winIdx-1); renderClub(); };
+  $('winNext').onclick=function(){ winIdx=Math.min(windows().length-1,winIdx+1); renderClub(); };
+  $('winSel').addEventListener('change',function(){ winIdx=+this.value; renderClub(); });
+  $('clubStartEdit').onclick=function(){ $('clubStart').value=state.club.start; $('clubStartBox').hidden=false; $('clubStartEdit').hidden=true; $('clubStart').focus(); };
+  $('clubStartCancel').onclick=function(){ $('clubStartBox').hidden=true; $('clubStartEdit').hidden=false; };
+  $('clubStartSave').onclick=function(){
+    var v=$('clubStart').value; if(!v){ toast('달을 골라 주세요.'); return; }
+    var snap=snapshot(); state.club.start=v; winIdx=null; persist();
+    $('clubStartBox').hidden=true; $('clubStartEdit').hidden=false; renderClub();
+    toast('시작 달을 '+ymText(v)+'로 바꿨어요.',function(){restore(snap);});
+  };
+  moneyInput($('clubFee')); moneyInput($('clubCarry'));
+  $('clubTitle').addEventListener('input',function(){ state.club.title=this.value; persist(); });
+  $('clubFee').addEventListener('input',function(){ state.club.fee=numOf(this.value); persist(); renderClub(); });
+  $('clubCarry').addEventListener('input',function(){ state.club.carry=numOf(this.value); persist(); renderClub(); });
+  $('clubMemberAdd').onclick=function(){addMember('club');};
+  $('clubMemberIn').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addMember('club'); } });
+  $('clubMembers').addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-rm]'); if(!b) return;
+    var C=state.club, id=b.dataset.rm, m=C.members.filter(function(x){return x.id===id;})[0];
+    armDelete(b,function(){ var snap=snapshot(); C.members=C.members.filter(function(x){return x.id!==id;}); delete C.paid[id]; persist(); renderAll(); toast(m.name+' 님을 뺐어요.',function(){restore(snap);}); });
+  });
+  $('payGrid').addEventListener('click',function(ev){
+    var b=ev.target.closest('.pay'); if(!b) return;
+    var C=state.club, id=b.dataset.m, ym=b.dataset.ym;
+    C.paid[id]=C.paid[id]||{}; if(C.paid[id][ym]) delete C.paid[id][ym]; else C.paid[id][ym]=true;
+    persist(); renderClub();
+    var nb=document.getElementById(b.id); if(nb) nb.focus();
+  });
+  /* 모임 기록: 쓴 내역 여러 줄 */
+  var ITEMS=['식사','음료·카페','장소 대여','교통','간식','선물·경조사','기타'];
+  var draft=[{name:'',amount:0}], editMeet=null;
+  $('itemChips').innerHTML=ITEMS.map(function(n,i){return '<button type="button" class="chip" id="ic'+i+'" data-v="'+n+'" aria-pressed="false">'+n+'</button>';}).join('');
+  function drawRows(focusIdx){
+    $('itemRows').innerHTML=draft.map(function(r,i){
+      return '<div class="itemrow"><input id="itn'+i+'" data-i="'+i+'" data-k="name" autocomplete="off" placeholder="항목 (예: 식사)" aria-label="'+(i+1)+'번째 항목" value="'+esc(r.name)+'">'+
+        '<input id="ita'+i+'" data-i="'+i+'" data-k="amount" inputmode="numeric" autocomplete="off" placeholder="금액" aria-label="'+(i+1)+'번째 금액" value="'+(r.amount?r.amount.toLocaleString('ko-KR'):'')+'">'+
+        '<button type="button" class="x" id="itx'+i+'" data-rmi="'+i+'" aria-label="'+(i+1)+'번째 줄 지우기">×</button></div>';
+    }).join('');
+    drawSum();
+    if(focusIdx!=null){ var f=$('ita'+focusIdx); if(f) f.focus(); }
+  }
+  function drawSum(){ $('mtSum').textContent=won(draft.reduce(function(s,r){return s+(r.amount||0);},0)); }
+  $('itemRows').addEventListener('input',function(ev){
+    var t=ev.target, i=+t.dataset.i; if(isNaN(i)) return;
+    if(t.dataset.k==='amount'){ var n=numOf(t.value); t.value=n?n.toLocaleString('ko-KR'):''; draft[i].amount=n; drawSum(); }
+    else draft[i].name=t.value;
+  });
+  $('itemRows').addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-rmi]'); if(!b) return;
+    draft.splice(+b.dataset.rmi,1); if(!draft.length) draft.push({name:'',amount:0}); drawRows();
+  });
+  $('itemAdd').onclick=function(){ draft.push({name:'',amount:0}); drawRows(); $('itn'+(draft.length-1)).focus(); };
+  $('itemChips').addEventListener('click',function(ev){
+    var b=ev.target.closest('.chip'); if(!b) return;
+    var empty=draft.findIndex(function(r){return !r.name&&!r.amount;});
+    if(empty<0){ draft.push({name:b.dataset.v,amount:0}); empty=draft.length-1; } else draft[empty].name=b.dataset.v;
+    drawRows(empty);
+  });
+  function resetMeet(){
+    editMeet=null; draft=[{name:'',amount:0}];
+    $('mtDate').value=todayISO(); $('mtName').value=''; $('mtError').textContent='';
+    $('mtTitle').textContent='3. 모임 때 쓴 돈'; $('mtSave').textContent='모임 기록 저장'; $('mtCancel').hidden=true; $('mtCard').classList.remove('editing');
+    drawRows();
+  }
+  $('mtCancel').onclick=resetMeet;
+  $('mtForm').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var date=$('mtDate').value||todayISO();
+    var items=draft.filter(function(r){return r.amount>0;}).map(function(r){return {name:r.name.trim()||'기타',amount:r.amount};});
+    if(!items.length){ $('mtError').textContent='쓴 내역을 한 줄 이상, 금액과 함께 적어 주세요.'; return; }
+    var title=$('mtName').value.trim()||(+date.slice(5,7))+'월 모임';
+    var snap=snapshot(), total=items.reduce(function(s,i){return s+i.amount;},0);
+    if(editMeet){
+      var id=editMeet; state.club.spends=state.club.spends.map(function(x){return x.id===id?{id:id,date:date,title:title,items:items}:x;});
+      persist(); resetMeet(); renderClub(); toast(title+' 기록을 고쳤어요.',function(){restore(snap);}); return;
+    }
+    state.club.spends.push({id:uid(),date:date,title:title,items:items});
+    mtPage=0; flowYear=date.slice(0,4);
+    persist(); resetMeet(); renderClub(); toast(title+'에 쓴 '+won(total)+'을 회비 현황에 더했어요.',function(){restore(snap);});
+  });
+  $('spendList').addEventListener('click',function(ev){
+    var b=ev.target.closest('button'); if(!b) return; var id=b.dataset.id;
+    var x=state.club.spends.filter(function(s){return s.id===id;})[0]; if(!x) return;
+    if(b.classList.contains('edit')){
+      editMeet=id; draft=meetItems(x).map(function(i){return {name:i.name,amount:Number(i.amount)||0};});
+      $('mtDate').value=x.date; $('mtName').value=x.title; $('mtError').textContent='';
+      $('mtTitle').textContent='모임 기록 고치기'; $('mtSave').textContent='고친 내용 저장'; $('mtCancel').hidden=false; $('mtCard').classList.add('editing');
+      drawRows(); $('mtCard').scrollIntoView({block:'start'}); $('mtName').focus({preventScroll:true});
+      return;
+    }
+    armDelete(b,function(){ var snap=snapshot(); state.club.spends=state.club.spends.filter(function(s){return s.id!==id;}); if(editMeet===id) resetMeet(); persist(); renderClub(); toast(x.title+' 기록을 지웠어요.',function(){restore(snap);}); });
+  });
+  resetMeet();
+  $('clubClear').onclick=function(){ var snap=snapshot(); state.club={title:'',fee:10000,carry:0,start:thisMonthMinus(0),members:[],paid:{},spends:[]}; winIdx=null; persist(); renderAll(); toast('예시를 지웠어요.',function(){restore(snap);}); $('clubTitle').focus(); };
+
+  function renderClub(){
+    var C=state.club, now=nowYM(), s=clubStats(C,now);
+    $('clubSample').hidden=!C.sample;
+    var keep=function(id,v){ if(document.activeElement!==$(id)) $(id).value=v; };
+    keep('clubTitle',C.title||''); keep('clubFee',C.fee?C.fee.toLocaleString('ko-KR'):''); keep('clubCarry',C.carry?C.carry.toLocaleString('ko-KR'):'');
+    $('clubStartText').textContent=ymText(C.start);
+    var wins=windows(); if(winIdx===null||winIdx>=wins.length) winIdx=defaultWin();
+    var ms=wins[winIdx], fut=wins.length-1;
+    $('winSel').innerHTML=wins.map(function(w,i){return '<option value="'+i+'"'+(i===winIdx?' selected':'')+'>'+windowLabel(w)+(i===fut?' (미리)':i===fut-1?' (최근)':'')+'</option>';}).join('');
+    $('winPrev').disabled=winIdx===0; $('winNext').disabled=winIdx===fut;
+    var owed={}; s.unpaid.forEach(function(u){owed[u.id]=u.amt;});
+    $('clubMembers').innerHTML=C.members.length?C.members.map(function(m){return '<span class="member">'+esc(m.name)+'<button type="button" id="crm-'+m.id+'" data-rm="'+m.id+'" aria-label="'+esc(m.name)+' 빼기">×</button></span>';}).join(''):'<p class="empty">아직 회원이 없어요.</p>';
+    var head='<thead><tr><th scope="col">이름</th>'+ms.map(function(m){var f=m>now; return '<th scope="col" style="text-align:center"'+(f?' class="future"':'')+'>'+ymText(m).replace(/^\d{4}년 /,m.slice(0,4)!==now.slice(0,4)?m.slice(2,4)+'.':'')+(f?'<small>미리</small>':'')+'</th>';}).join('')+'<th scope="col">밀린 회비</th></tr></thead>';
+    var body=C.members.map(function(m){
+      var cells=ms.map(function(ym){ var p=!!(C.paid[m.id]&&C.paid[m.id][ym]); return '<td class="c"><button type="button" class="pay" id="p-'+m.id+'-'+ym+'" data-m="'+m.id+'" data-ym="'+ym+'" aria-pressed="'+p+'" aria-label="'+esc(m.name)+' '+ymText(ym)+(p?' 냄':' 안 냄')+'">'+(p?'냄':'')+'</button></td>'; }).join('');
+      return '<tr><td>'+esc(m.name)+'</td>'+cells+'<td>'+(owed[m.id]?'<span class="money out">'+won(owed[m.id])+'</span>':'<span class="note">없음</span>')+'</td></tr>';
+    }).join('');
+    var foot='<tfoot><tr><td>낸 사람</td>'+ms.map(function(ym){ var k=C.members.filter(function(m){return C.paid[m.id]&&C.paid[m.id][ym];}).length; return '<td style="text-align:center">'+k+'/'+C.members.length+'</td>'; }).join('')+'<td>'+(s.unpaidSum?won(s.unpaidSum):'')+'</td></tr></tfoot>';
+    $('payGrid').innerHTML=C.members.length?head+'<tbody>'+body+'</tbody>'+foot:'<tbody><tr><td class="empty">회원을 추가하면 표가 생겨요.</td></tr></tbody>';
+    var allMeets=C.spends.slice().sort(function(a,b){return a.date<b.date?1:-1;}), pages=Math.max(1,Math.ceil(allMeets.length/MT_PAGE));
+    if(mtPage>pages-1) mtPage=pages-1; if(mtPage<0) mtPage=0;
+    $('mtPager').hidden=allMeets.length<=MT_PAGE;
+    $('mtPrev').disabled=mtPage===0; $('mtNext').disabled=mtPage>=pages-1;
+    $('mtPageText').textContent=(mtPage+1)+' / '+pages+'쪽 · 모임 '+allMeets.length+'번';
+    $('spendList').innerHTML=allMeets.length?allMeets.slice(mtPage*MT_PAGE,(mtPage+1)*MT_PAGE).map(function(x){
+      var it=meetItems(x);
+      return '<li class="item"><div><strong>'+esc(x.title)+'</strong><div class="sub">'+x.date.replace(/-/g,'. ')+'. · '+it.map(function(i){return esc(i.name)+' '+won(i.amount);}).join(' · ')+'</div></div><span class="money out">'+won(meetTotal(x))+'</span>'+
+        '<div class="btns"><button type="button" class="small edit" id="se-'+x.id+'" data-id="'+x.id+'">고치기</button><button type="button" class="small" id="sd-'+x.id+'" data-id="'+x.id+'">지우기</button></div></li>';
+    }).join(''):'<li class="empty">아직 기록한 모임이 없어요.</li>';
+    $('cIn').textContent=won(s.collected); $('cOut').textContent=won(s.spent); $('cLeft').textContent=won(s.left);
+    $('cCarryNote').textContent=[C.spends.length?'쓴 돈은 모임 '+C.spends.length+'번을 더한 금액이에요.':'', C.carry?'남은 돈에는 처음 남아 있던 '+won(C.carry)+'이 들어 있어요.':''].filter(Boolean).join(' ');
+    var flowAll=monthlyFlow(C,now), years=[];
+    flowAll.forEach(function(f){ var y=f.ym.slice(0,4); if(years.indexOf(y)<0) years.push(y); });
+    if(flowYear===null||years.indexOf(flowYear)<0) flowYear=years.indexOf(now.slice(0,4))>=0?now.slice(0,4):years[years.length-1];
+    var yi=years.indexOf(flowYear);
+    $('flowPrev').disabled=yi<=0; $('flowNext').disabled=yi>=years.length-1; $('flowPager').hidden=years.length<2;
+    $('flowYearText').textContent=flowYear+'년';
+    var flow=flowAll.filter(function(f){return f.ym.slice(0,4)===flowYear;}).reverse();
+    $('flowRows').innerHTML=flow.map(function(f){
+      return '<tr><td>'+(+f.ym.slice(5))+'월'+(f.ym>now?' <span class="note">(미리)</span>':'')+'</td><td>'+(f.inn?'<span class="money in">+'+won(f.inn)+'</span>':'-')+'</td><td>'+(f.out?'<span class="money out">−'+won(f.out)+'</span>'+(f.count>1?' <span class="note">('+f.count+'번)</span>':''):'-')+'</td><td'+(f.bal<0?' class="neg"':'')+'>'+won(f.bal)+'</td></tr>';
+    }).join('')+(yi===0?'<tr><td class="note">시작할 때</td><td></td><td></td><td>'+won(C.carry)+'</td></tr>':'');
+    var yIn=flow.reduce(function(a,f){return a+f.inn;},0), yOut=flow.reduce(function(a,f){return a+f.out;},0);
+    $('flowFoot').innerHTML='<tr><td>'+flowYear+'년 합계</td><td>'+won(yIn)+'</td><td>'+won(yOut)+'</td><td>'+(flow.length?won(flow[0].bal):'')+'</td></tr>';
+    $('clubCopyBox').value=C.members.length?clubText(C,fmtToday(),now):'회원을 추가하면 단톡방에 보낼 안내 문구가 여기에 만들어져요.';
+    $('unpaidBox').innerHTML=!C.members.length?'<p class="empty">회원을 추가해 주세요.</p>':s.unpaid.length?
+      '<ul class="unpaid">'+s.unpaid.map(function(u){return '<li><strong>'+esc(u.name)+'</strong>'+u.months.map(function(m){return '<span class="mpill">'+monthLabel(m,s.due)+'</span>';}).join('')+'<span class="money out">'+won(u.amt)+'</span></li>';}).join('')+'</ul><p class="note">'+ymText(C.start)+'부터 '+ymText(now)+'까지 기준이에요. 모두 합하면 '+won(s.unpaidSum)+'이에요.</p>':'<p class="done">'+ymText(now)+'까지 모두 냈어요!</p>';
+  }
+
+  /* ===== copy & export ===== */
+  function fmtToday(){ var d=new Date(); return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일'; }
+  async function copyText(text,box){
+    var b=$(box); b.value=text;
+    try{ await navigator.clipboard.writeText(text); toast('복사했어요. 단톡방에 붙여 넣으세요.'); }
+    catch(e){ b.focus(); b.select(); toast('자동 복사가 안 돼요. 미리 보기 글을 길게 눌러 복사해 주세요.'); }
+  }
+
+  var inViewer=!!(window.claude&&typeof window.claude.use==='function');
+  var dlPromise=inViewer?Promise.resolve(window.claude.use('downloads')).catch(function(){return null;}):Promise.resolve(undefined);
+  dlPromise.then(function(dl){ if(dl===null){ $('clubExport').disabled=true; document.querySelectorAll('.dlnote').forEach(function(n){n.textContent='이 화면에서는 파일 저장이 지원되지 않아요.';}); } });
+  function stamp(){ return todayISO().replace(/-/g,''); }
+  async function saveWb(build,filename){
+    if(typeof ExcelJS==='undefined'){ toast('엑셀 도구를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침해 주세요.'); return; }
+    var buf=new Uint8Array(await build().xlsx.writeBuffer()), dl=await dlPromise;
+    if(dl===undefined){
+      var url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+      var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},2000);
+      toast('엑셀 파일을 저장했어요.'); return;
+    }
+    if(!dl){ toast('이 화면에서는 파일 저장이 지원되지 않아요.'); return; }
+    try{ await dl.save({filename:filename,data:buf}); toast('엑셀 파일을 저장했어요.'); }
+    catch(e){ var c=e&&e.code; toast(c==='declined'?'저장을 취소했어요.':c==='rate_limited'?'잠시 뒤에 다시 눌러 주세요.':'파일을 저장하지 못했어요. 다시 시도해 주세요.'); }
+  }
+  $('clubCopy').onclick=function(){ if(!state.club.members.length){ toast('먼저 회원을 추가해 주세요.'); return; } copyText(clubText(state.club,fmtToday(),nowYM()),'clubCopyBox'); };
+  $('clubExport').onclick=function(){ if(!state.club.members.length){ toast('먼저 회원을 추가해 주세요.'); return; } saveWb(function(){return buildClubWb(ExcelJS,state.club,nowYM());},(state.club.title||'모임')+'_회비_'+stamp()+'.xlsx'); };
+
+  function renderAll(){ renderClub(); }
+  renderAll();
+})(); }
+</script>
+</body>
+</html>
