@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경조사비 장부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet">
+<style>
+/* 큰 글씨·큰 버튼의 한 장짜리 장부. 왼쪽은 적기, 오른쪽은 찾기·목록·엑셀. 휴대폰에서는 한 줄로 쌓임 */
+:root{
+  --paper:#f3f4f7; --card:#ffffff; --ink:#1c2230; --muted:#566074; --line:#d6dbe4;
+  --accent:#2c4677; --accent-ink:#ffffff; --accent-soft:#e3e9f4;
+  --in:#1d6a4e; --in-soft:#e2f1ea; --out:#9c3a2e; --out-soft:#f6e5e2;
+  --display:"Noto Serif KR", "Nanum Myeongjo", serif;
+  --body:"Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#13161c; --card:#1c2029; --ink:#e9ecf1; --muted:#a4acbb; --line:#323846;
+    --accent:#93acdc; --accent-ink:#0f1218; --accent-soft:#263147;
+    --in:#72cba6; --in-soft:#18302a; --out:#ee9488; --out-soft:#36201d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#13161c; --card:#1c2029; --ink:#e9ecf1; --muted:#a4acbb; --line:#323846;
+  --accent:#93acdc; --accent-ink:#0f1218; --accent-soft:#263147;
+  --in:#72cba6; --in-soft:#18302a; --out:#ee9488; --out-soft:#36201d;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{font-size:19px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:2.1rem}
+h2{font-size:1.3rem}
+.top{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:18px}
+.top p{margin:6px 0 0;color:var(--muted)}
+.owner{display:flex;flex-direction:column;gap:4px;min-width:240px}
+.owner label{font-size:.85rem;color:var(--muted)}
+input{font:inherit;font-size:1.05rem;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:10px;padding:12px 14px;min-height:54px;width:100%}
+input:focus-visible,button:focus-visible,.filebtn:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;display:flex;flex-direction:column;gap:2px}
+.tile span{color:var(--muted);font-size:.9rem}
+.tile strong{font-size:1.7rem;font-variant-numeric:tabular-nums;line-height:1.3}
+.tile small{color:var(--muted);font-size:.85rem}
+.tile.in{border-top:6px solid var(--in)} .tile.in strong{color:var(--in)}
+.tile.out{border-top:6px solid var(--out)} .tile.out strong{color:var(--out)}
+.tile.diff{border-top:6px solid var(--accent)}
+.notice{background:var(--accent-soft);border-radius:12px;padding:12px 18px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.notice[hidden]{display:none}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:22px;align-items:start}
+.col{display:flex;flex-direction:column;gap:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:16px}
+form{display:flex;flex-direction:column;gap:20px}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+legend,.field>label{font-weight:700;padding:0;margin-bottom:8px}
+.field{display:flex;flex-direction:column}
+.dir{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dirbtn{min-height:64px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font-size:1.15rem;font-weight:700}
+.dirbtn[data-dir="in"][aria-pressed="true"]{background:var(--in);border-color:var(--in);color:var(--card)}
+.dirbtn[data-dir="out"][aria-pressed="true"]{background:var(--out);border-color:var(--out);color:var(--card)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:50px;padding:0 18px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);font-size:1rem}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.amountrow{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.read{color:var(--accent);font-weight:700;min-height:1.6em}
+.hint{margin-top:8px;background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:.95rem}
+.hint[hidden]{display:none}
+.error{color:var(--out);font-weight:700;margin:0;min-height:0}
+.error:empty{display:none}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;min-height:60px;font-size:1.15rem;font-weight:700;padding:0 22px}
+.secondary{background:var(--card);color:var(--accent);border:2px solid var(--accent);border-radius:12px;min-height:54px;font-size:1rem;font-weight:700;padding:0 18px}
+.secondary:disabled,.primary:disabled{opacity:.5;cursor:not-allowed}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.ledger{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:7.2em minmax(0,1fr) auto auto;gap:6px 14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.when{color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.who strong{font-size:1.05rem}
+.who .sub{color:var(--muted);font-size:.88rem}
+.pill{display:inline-block;font-size:.8rem;font-weight:700;padding:1px 10px;border-radius:999px;margin-right:6px;vertical-align:2px}
+.pill.in{background:var(--in-soft);color:var(--in)} .pill.out{background:var(--out-soft);color:var(--out)}
+.pill.sample{background:var(--accent-soft);color:var(--accent)}
+.money{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.money.in{color:var(--in)} .money.out{color:var(--out)}
+.del,.edit{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;min-height:44px;padding:0 12px;font-size:.85rem}
+.edit{color:var(--accent);border-color:var(--accent)}
+.btns{display:flex;gap:6px}
+.pin{align-self:flex-start;margin-top:4px;background:var(--card);color:var(--accent);border:2px dashed var(--accent);border-radius:10px;min-height:48px;padding:0 16px;font-size:.95rem;font-weight:700}
+.pin[aria-pressed="true"]{background:var(--accent-soft);border-style:solid}
+.pin:disabled{opacity:.45;cursor:not-allowed}
+.card.editing{border:2px solid var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.del.armed{border-color:var(--out);color:var(--out);font-weight:700}
+.empty{color:var(--muted);margin:0}
+.person{border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.person h3{margin:0;font-size:1.1rem}
+.person .totals{display:flex;flex-wrap:wrap;gap:4px 18px;font-variant-numeric:tabular-nums}
+.person ul{margin:4px 0 0;padding-left:1.1em;color:var(--muted);font-size:.92rem}
+.balance{font-weight:700;color:var(--accent)}
+.people{display:flex;flex-direction:column;gap:10px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.filebtn{position:relative;display:inline-flex;align-items:center}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;min-height:0;padding:0}
+.filebtn span{background:var(--card);color:var(--accent);border:2px solid var(--accent);border-radius:12px;min-height:54px;font-size:1rem;font-weight:700;padding:0 18px;display:inline-flex;align-items:center}
+.note{color:var(--muted);font-size:.92rem;margin:0}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:14px 22px;border-radius:12px;max-width:min(92vw,560px);display:flex;gap:14px;align-items:center;font-weight:500;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#toast[hidden]{display:none}
+#toast button{background:none;border:1px solid var(--paper);color:var(--paper);border-radius:8px;padding:6px 12px}
+@media (max-width:860px){
+  .grid{grid-template-columns:1fr}
+  .summary{grid-template-columns:1fr}
+  .row{grid-template-columns:minmax(0,1fr) auto}
+  .row .when{grid-column:1/-1}
+  .row .btns{grid-column:1/-1;justify-content:flex-end}
+}
+@media (prefers-reduced-motion:no-preference){button,.chip{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>경조사비 장부</h1>
+      <p>받은 마음과 보낸 마음을 적어 두고, 엑셀 파일로 저장해 두세요.</p>
+    </div>
+    <div class="owner">
+      <label for="owner">장부 주인 이름</label>
+      <input id="owner" placeholder="예: 김영희" autocomplete="off">
+    </div>
+  </header>
+
+  <section class="summary" aria-label="합계">
+    <div class="tile in"><span>받은 돈</span><strong id="sumIn">0원</strong><small id="cntIn">0건</small></div>
+    <div class="tile out"><span>보낸 돈</span><strong id="sumOut">0원</strong><small id="cntOut">0건</small></div>
+    <div class="tile diff"><span>받은 돈 − 보낸 돈</span><strong id="sumDiff">0원</strong><small id="cntPeople">0명과 주고받음</small></div>
+  </section>
+
+  <div id="sampleBar" class="notice" hidden>
+    <span>지금 보이는 내용은 <strong>예시</strong>예요. 어떻게 쓰는지 둘러보신 뒤 지우고 시작하세요.</span>
+    <button id="clearSample" class="secondary" type="button">예시 지우고 내 장부 시작하기</button>
+  </div>
+
+  <main class="grid">
+    <section class="card" id="formCard" aria-labelledby="formTitle">
+      <h2 id="formTitle">새로 적기</h2>
+      <form id="entryForm" novalidate>
+        <fieldset>
+          <legend>1. 받았나요, 보냈나요?</legend>
+          <div class="dir">
+            <button type="button" class="dirbtn" data-dir="in" aria-pressed="true" id="dirIn">받았어요</button>
+            <button type="button" class="dirbtn" data-dir="out" aria-pressed="false" id="dirOut">보냈어요</button>
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="date">2. 날짜</label>
+          <input type="date" id="date">
+        </div>
+        <fieldset>
+          <legend>3. 무슨 일인가요?</legend>
+          <div class="chips" id="eventChips"></div>
+          <button type="button" class="pin" id="pinEvent" aria-pressed="false">이 행사로 고정하기</button>
+          <p id="pinNote" class="hint" hidden></p>
+        </fieldset>
+        <div class="field">
+          <label for="name">4. 누구인가요?</label>
+          <input id="name" list="nameList" autocomplete="off" placeholder="이름 (예: 박정민)">
+          <datalist id="nameList"></datalist>
+          <div id="nameHint" class="hint" hidden></div>
+        </div>
+        <fieldset>
+          <legend>5. 어떤 사이인가요?</legend>
+          <div class="chips" id="relChips"></div>
+        </fieldset>
+        <div class="field">
+          <label for="amount">6. 금액</label>
+          <div class="chips" id="amtChips"></div>
+          <div class="amountrow">
+            <input id="amount" inputmode="numeric" autocomplete="off" placeholder="다른 금액은 직접 입력 (원)">
+            <span id="amountRead" class="read" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="memo">7. 메모 (안 적어도 돼요)</label>
+          <input id="memo" autocomplete="off" placeholder="예: 아들 결혼식, 화환도 보냄">
+        </div>
+        <p id="formError" class="error" role="alert"></p>
+        <div class="actions">
+          <button type="submit" class="primary" id="saveEntry">장부에 적기</button>
+          <button type="button" class="secondary" id="cancelEdit" hidden>고치기 취소</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="col">
+      <section class="card" aria-labelledby="findTitle">
+        <h2 id="findTitle">이름으로 찾기</h2>
+        <label for="search" class="note">"그분 결혼식 때 얼마 받았더라?" 할 때 이름을 넣어 보세요.</label>
+        <input id="search" autocomplete="off" placeholder="이름 입력">
+        <div id="people" class="people"></div>
+      </section>
+
+      <section class="card" aria-labelledby="listTitle">
+        <h2 id="listTitle">장부 내용</h2>
+        <div class="tabs" role="group" aria-label="보기">
+          <button type="button" class="chip" data-filter="all" aria-pressed="true" id="fAll">전체</button>
+          <button type="button" class="chip" data-filter="in" aria-pressed="false" id="fIn">받은 것</button>
+          <button type="button" class="chip" data-filter="out" aria-pressed="false" id="fOut">보낸 것</button>
+        </div>
+        <ul id="list" class="ledger"></ul>
+      </section>
+
+      <section class="card" aria-labelledby="xlTitle">
+        <h2 id="xlTitle">엑셀 파일</h2>
+        <p class="note">장부는 이 기기에 임시로 남아 있어요. 오래 보관하려면 엑셀로 저장해 두고, 다음에 그 파일을 불러와 이어서 쓰세요.</p>
+        <div class="actions">
+          <button type="button" class="primary" id="exportBtn">엑셀로 저장하기</button>
+          <label class="filebtn" for="importFile"><input type="file" id="importFile" accept=".xlsx"><span>저장한 엑셀 불러오기</span></label>
+          <button type="button" class="secondary" id="blankBtn">빈 장부 양식 받기</button>
+        </div>
+        <p class="note" id="dlNote">엑셀 파일에는 사람별 합계 시트와, 칸을 고르기만 하면 되는 목록이 함께 들어가요.</p>
+      </section>
+    </div>
+  </main>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden>되돌리기</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+/* ===== CORE (pure) ===== */
+var EVENTS=['결혼','장례','돌잔치','환갑·칠순','개업·이전','병문안','기타'];
+var RELS=['친척','친구','직장','이웃','모임','기타'];
+var AMOUNTS=[30000,50000,100000,200000,300000,500000];
+
+function won(n){return (Number(n)||0).toLocaleString('ko-KR')+'원';}
+function readWon(n){
+  n=Math.round(Number(n)||0); if(!n) return '0원';
+  var sign=n<0?'-':''; n=Math.abs(n);
+  var eok=Math.floor(n/100000000), man=Math.floor((n%100000000)/10000), rest=n%10000, p=[];
+  if(eok) p.push(eok.toLocaleString('ko-KR')+'억');
+  if(man) p.push(man.toLocaleString('ko-KR')+'만');
+  if(rest) p.push(rest.toLocaleString('ko-KR'));
+  return sign+p.join(' ')+'원';
+}
+function fmtDate(iso){ if(!iso) return ''; var a=iso.split('-'); return a[0]+'. '+(+a[1])+'. '+(+a[2])+'.'; }
+function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function sortEntries(list){ return list.slice().sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:(b.id>a.id?1:-1); }); }
+function totals(list){
+  var t={inSum:0,outSum:0,inCnt:0,outCnt:0,people:0}, names={};
+  list.forEach(function(e){ if(e.dir==='in'){t.inSum+=e.amount;t.inCnt++;} else {t.outSum+=e.amount;t.outCnt++;} names[e.name]=1; });
+  t.people=Object.keys(names).length; return t;
+}
+function byPerson(list){
+  var m={};
+  list.forEach(function(e){
+    var p=m[e.name]||(m[e.name]={name:e.name,rel:e.rel,inSum:0,outSum:0,items:[]});
+    if(e.dir==='in') p.inSum+=e.amount; else p.outSum+=e.amount;
+    p.items.push(e); if(e.rel) p.rel=e.rel;
+  });
+  return Object.keys(m).sort(function(a,b){return a.localeCompare(b,'ko');}).map(function(k){ m[k].items=sortEntries(m[k].items); return m[k]; });
+}
+
+function isoToDate(iso){ var a=iso.split('-'); return new Date(Date.UTC(+a[0],+a[1]-1,+a[2])); }
+function dateToIso(d){ return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0'); }
+
+function buildWorkbook(X, entries, owner, blank){
+  var wb=new X.Workbook(); wb.creator='경조사비 장부';
+  var FONT={name:'맑은 고딕',size:12};
+  var HEAD={type:'pattern',pattern:'solid',fgColor:{argb:'FF2C4677'}};
+  var LINE={style:'thin',color:{argb:'FFC9CFDA'}};
+  var BOX={top:LINE,left:LINE,bottom:LINE,right:LINE};
+  var MONEY='#,##0"원"';
+  var ws=wb.addWorksheet('장부',{views:[{state:'frozen',ySplit:4}],
+    pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+  var widths=[14,9,12,13,10,15,15,34];
+  widths.forEach(function(w,i){ ws.getColumn(i+1).width=w; });
+  ws.mergeCells('A1:H1');
+  var t=ws.getCell('A1'); t.value=(owner?owner+'님의 ':'')+'경조사비 장부'; t.font={name:FONT.name,size:18,bold:true}; ws.getRow(1).height=32;
+
+  var list=blank?[]:sortEntries(entries).reverse();
+  var first=5, extra=blank?60:30, last=first+list.length+extra-1;
+  var tt=totals(list);
+  ws.getCell('A2').value='받은 돈'; ws.mergeCells('B2:C2');
+  ws.getCell('B2').value={formula:'SUM(F'+first+':F'+last+')',result:tt.inSum};
+  ws.getCell('D2').value='보낸 돈'; ws.mergeCells('E2:F2');
+  ws.getCell('E2').value={formula:'SUM(G'+first+':G'+last+')',result:tt.outSum};
+  ws.getCell('G2').value='차이';
+  ws.getCell('H2').value={formula:'B2-E2',result:tt.inSum-tt.outSum};
+  ['A2','D2','G2'].forEach(function(a){ var c=ws.getCell(a); c.font={name:FONT.name,size:12,bold:true}; });
+  ['B2','E2','H2'].forEach(function(a){ var c=ws.getCell(a); c.numFmt=MONEY; c.font={name:FONT.name,size:13,bold:true}; c.alignment={horizontal:'left'}; });
+  ws.getCell('B2').font={name:FONT.name,size:13,bold:true,color:{argb:'FF1D6A4E'}};
+  ws.getCell('E2').font={name:FONT.name,size:13,bold:true,color:{argb:'FF9C3A2E'}};
+  ws.getRow(2).height=24;
+  ws.getCell('A3').value=blank?'구분·행사·관계 칸은 클릭하면 목록에서 고를 수 있어요. 금액은 숫자만 적으세요.':'아래에 줄을 이어서 적으면 합계가 저절로 바뀌어요.';
+  ws.getCell('A3').font={name:FONT.name,size:10,color:{argb:'FF566074'}};
+
+  var head=['날짜','구분','행사','이름','관계','받은 금액','보낸 금액','메모'];
+  var hr=ws.getRow(4); hr.values=head; hr.height=26;
+  hr.eachCell(function(c){ c.font={name:FONT.name,size:12,bold:true,color:{argb:'FFFFFFFF'}}; c.fill=HEAD; c.border=BOX; c.alignment={vertical:'middle',horizontal:'center'}; });
+
+  for(var r=first;r<=last;r++){
+    var e=list[r-first], row=ws.getRow(r);
+    if(e){ row.values=[isoToDate(e.date),e.dir==='in'?'받음':'보냄',e.event,e.name,e.rel,e.dir==='in'?e.amount:null,e.dir==='out'?e.amount:null,e.memo||null]; }
+    row.height=22;
+    for(var col=1;col<=8;col++){
+      var c=row.getCell(col); c.border=BOX; c.font=FONT; c.alignment={vertical:'middle',wrapText:col===8};
+      if(col===1) c.numFmt='yyyy-mm-dd';
+      if(col===6||col===7) c.numFmt=MONEY;
+    }
+    row.getCell(2).dataValidation={type:'list',allowBlank:true,formulae:['"받음,보냄"']};
+    row.getCell(3).dataValidation={type:'list',allowBlank:true,formulae:['"'+EVENTS.join(',')+'"']};
+    row.getCell(5).dataValidation={type:'list',allowBlank:true,formulae:['"'+RELS.join(',')+'"']};
+    if(e){ row.getCell(e.dir==='in'?6:7).font={name:FONT.name,size:12,color:{argb:e.dir==='in'?'FF1D6A4E':'FF9C3A2E'}}; }
+  }
+
+  var ps=wb.addWorksheet('사람별 정리',{views:[{state:'frozen',ySplit:1}]});
+  [14,10,15,15,15,10].forEach(function(w,i){ ps.getColumn(i+1).width=w; });
+  var ph=ps.getRow(1); ph.values=['이름','관계','받은 합계','보낸 합계','차이(받은−보낸)','횟수']; ph.height=26;
+  ph.eachCell(function(c){ c.font={name:FONT.name,size:12,bold:true,color:{argb:'FFFFFFFF'}}; c.fill=HEAD; c.border=BOX; c.alignment={vertical:'middle',horizontal:'center',wrapText:true}; });
+  var people=byPerson(list), pn=Math.max(people.length+20, blank?40:0);
+  var R="'장부'!";
+  for(var i=0;i<pn;i++){
+    var p=people[i], rr=i+2, prow=ps.getRow(rr);
+    var A='A'+rr;
+    var f1='IF('+A+'="","",SUMIF('+R+'$D$'+first+':$D$'+last+','+A+','+R+'$F$'+first+':$F$'+last+'))';
+    var f2='IF('+A+'="","",SUMIF('+R+'$D$'+first+':$D$'+last+','+A+','+R+'$G$'+first+':$G$'+last+'))';
+    var f3='IF('+A+'="","",C'+rr+'-D'+rr+')';
+    var f4='IF('+A+'="","",COUNTIF('+R+'$D$'+first+':$D$'+last+','+A+'))';
+    prow.values=[p?p.name:null,p?p.rel:null,
+      {formula:f1,result:p?p.inSum:''},{formula:f2,result:p?p.outSum:''},
+      {formula:f3,result:p?p.inSum-p.outSum:''},{formula:f4,result:p?p.items.length:''}];
+    prow.height=22;
+    for(var cc=1;cc<=6;cc++){ var cell=prow.getCell(cc); cell.border=BOX; cell.font=FONT; if(cc>=3&&cc<=5) cell.numFmt=MONEY; }
+  }
+  ps.getCell('H1').value='이름을 적으면 장부 시트에서 그 사람 금액을 찾아 합계를 내요.';
+  ps.getCell('H1').font={name:FONT.name,size:10,color:{argb:'FF566074'}};
+  return wb;
+}
+
+function cellVal(v){
+  if(v&&typeof v==='object'&&!(v instanceof Date)){
+    if('result' in v) return v.result;
+    if(v.richText) return v.richText.map(function(x){return x.text;}).join('');
+    if('text' in v) return v.text;
+    return null;
+  }
+  return v;
+}
+function parseWorkbook(wb){
+  var ws=wb.getWorksheet('장부')||wb.worksheets[0];
+  if(!ws) throw new Error('시트가 없어요');
+  var hdr=0;
+  for(var r=1;r<=12;r++){ if(String(cellVal(ws.getRow(r).getCell(1).value)||'').trim()==='날짜'){hdr=r;break;} }
+  if(!hdr) throw new Error('장부 양식이 아니에요');
+  var title=String(cellVal(ws.getCell('A1').value)||''); var m=title.match(/^(.+?)님의/);
+  var out=[], seq=Date.now();
+  for(var i=hdr+1;i<=ws.rowCount;i++){
+    var row=ws.getRow(i), g=function(c){return cellVal(row.getCell(c).value);};
+    var name=String(g(4)||'').trim(), ai=Number(g(6))||0, ao=Number(g(7))||0;
+    if(!name&&!ai&&!ao) continue;
+    var dv=g(1), iso='';
+    if(dv instanceof Date) iso=dateToIso(dv);
+    else if(typeof dv==='number') iso=dateToIso(new Date(Math.round((dv-25569)*86400000)));
+    else if(dv){ var mm=String(dv).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); if(mm) iso=mm[1]+'-'+mm[2].padStart(2,'0')+'-'+mm[3].padStart(2,'0'); }
+    var kind=String(g(2)||''), dir=kind.indexOf('받')>=0?'in':kind.indexOf('보')>=0?'out':(ai?'in':'out');
+    out.push({id:'x'+(seq++),date:iso||todayISO(),dir:dir,event:String(g(3)||'기타'),name:name||'(이름 없음)',rel:String(g(5)||''),amount:dir==='in'?(ai||ao):(ao||ai),memo:String(g(8)||'')});
+  }
+  return {entries:out,owner:m?m[1]:''};
+}
+/* ===== END CORE ===== */
+
+if(typeof document!=='undefined'){ (function(){
+  var KEY='gyeongjo-ledger-v1';
+  var SAMPLE=[
+    {id:'s1',date:'2026-10-18',dir:'out',event:'결혼',name:'이수경',rel:'친구',amount:100000,memo:'딸 결혼식',sample:true},
+    {id:'s2',date:'2026-09-02',dir:'out',event:'장례',name:'최동훈',rel:'직장',amount:100000,memo:'부친상',sample:true},
+    {id:'s3',date:'2026-05-23',dir:'in',event:'환갑·칠순',name:'박정민',rel:'친척',amount:200000,memo:'어머니 칠순 잔치',sample:true},
+    {id:'s4',date:'2025-11-08',dir:'in',event:'결혼',name:'이수경',rel:'친구',amount:100000,memo:'아들 결혼식',sample:true},
+    {id:'s5',date:'2025-06-14',dir:'in',event:'돌잔치',name:'김민재',rel:'이웃',amount:50000,memo:'',sample:true},
+    {id:'s6',date:'2025-03-02',dir:'out',event:'개업·이전',name:'김민재',rel:'이웃',amount:50000,memo:'식당 개업',sample:true}
+  ];
+  var state={entries:SAMPLE.slice(),owner:'',dir:'in',event:'',rel:'',filter:'all'};
+  try{ var s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&Array.isArray(s.entries)){state.entries=s.entries;state.owner=s.owner||'';} }catch(e){}
+  function persist(){ try{ localStorage.setItem(KEY,JSON.stringify({entries:state.entries,owner:state.owner})); }catch(e){} }
+
+  var $=function(id){return document.getElementById(id);};
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+  function makeChips(box,items,key,label){
+    box.innerHTML=items.map(function(v,i){return '<button type="button" class="chip" id="'+key+i+'" aria-pressed="false" data-v="'+esc(v)+'">'+esc(label?label(v):v)+'</button>';}).join('');
+    box.addEventListener('click',function(ev){
+      var b=ev.target.closest('.chip'); if(!b) return;
+      box.querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      if(key==='amt'){ $('amount').value=Number(b.dataset.v).toLocaleString('ko-KR'); showAmount(); }
+      else { state[key]=b.dataset.v; if(key==='event') updatePin(); }
+    });
+  }
+  function selectChip(boxId,val){ document.querySelectorAll('#'+boxId+' .chip').forEach(function(x){x.setAttribute('aria-pressed',x.dataset.v===String(val)?'true':'false');}); }
+  makeChips($('eventChips'),EVENTS,'event');
+  makeChips($('relChips'),RELS,'rel');
+  makeChips($('amtChips'),AMOUNTS.map(String),'amt',function(v){return readWon(v).replace('원','');});
+
+  function setDir(d){ state.dir=d; $('dirIn').setAttribute('aria-pressed',d==='in'?'true':'false'); $('dirOut').setAttribute('aria-pressed',d==='out'?'true':'false'); nameHint(); updatePin(); }
+  $('dirIn').onclick=function(){setDir('in');}; $('dirOut').onclick=function(){setDir('out');};
+  $('date').value=todayISO();
+  $('date').addEventListener('change',updatePin);
+
+  /* 행사 고정 */
+  var PKEY=KEY+'-pin';
+  state.pin=false; state.pinVals=null; state.editId=null;
+  function updatePin(){
+    var b=$('pinEvent'); if(!b) return;
+    b.setAttribute('aria-pressed',state.pin?'true':'false');
+    b.textContent=state.pin?'고정 풀기':'이 행사로 고정하기';
+    var n=$('pinNote');
+    if(state.pin&&!state.editId){
+      state.pinVals={event:state.event,date:$('date').value,dir:state.dir};
+      try{ localStorage.setItem(PKEY,JSON.stringify(state.pinVals)); }catch(e){}
+      n.innerHTML='<strong>고정 중:</strong> '+esc(state.event)+' · '+(state.dir==='in'?'받았어요':'보냈어요')+' · '+fmtDate($('date').value)+'<br>저장해도 이 세 가지는 그대로 남아요. 이름과 금액만 적으면 돼요.';
+      n.hidden=false;
+    } else n.hidden=true;
+  }
+  $('pinEvent').onclick=function(){
+    if(!state.pin&&!state.event){ $('formError').textContent='먼저 고정할 행사를 골라 주세요.'; return; }
+    $('formError').textContent=''; state.pin=!state.pin;
+    if(!state.pin){ state.pinVals=null; try{localStorage.removeItem(PKEY);}catch(e){} }
+    updatePin();
+  };
+  try{ var pv=JSON.parse(localStorage.getItem(PKEY)||'null'); if(pv&&pv.event){ state.pin=true; state.event=pv.event; selectChip('eventChips',pv.event); $('date').value=pv.date||todayISO(); state.dir=pv.dir==='out'?'out':'in'; } }catch(e){}
+
+  function resetForm(){
+    $('name').value=''; $('memo').value=''; $('amount').value=''; showAmount(); $('nameHint').hidden=true;
+    state.rel=''; selectChip('relChips',''); selectChip('amtChips','');
+    if(state.pin&&state.pinVals){ var p=state.pinVals; state.event=p.event; selectChip('eventChips',p.event); $('date').value=p.date; setDir(p.dir); }
+    else { state.event=''; selectChip('eventChips',''); updatePin(); }
+  }
+
+  /* 기록 고치기 */
+  var reduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function startEdit(id){
+    var e=state.entries.filter(function(x){return x.id===id;})[0]; if(!e) return;
+    state.editId=id;
+    $('date').value=e.date; state.event=e.event; selectChip('eventChips',e.event);
+    $('name').value=e.name; state.rel=e.rel||''; selectChip('relChips',state.rel);
+    $('amount').value=e.amount.toLocaleString('ko-KR'); selectChip('amtChips',String(e.amount)); showAmount();
+    $('memo').value=e.memo||''; setDir(e.dir);
+    $('formTitle').textContent='기록 고치기'; $('saveEntry').textContent='고친 내용 저장'; $('cancelEdit').hidden=false;
+    $('formCard').classList.add('editing'); $('pinEvent').disabled=true; $('formError').textContent='';
+    $('formCard').scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+    $('amount').focus({preventScroll:true});
+  }
+  function endEdit(){
+    state.editId=null;
+    $('formTitle').textContent='새로 적기'; $('saveEntry').textContent='장부에 적기'; $('cancelEdit').hidden=true;
+    $('formCard').classList.remove('editing'); $('pinEvent').disabled=false; $('formError').textContent='';
+    resetForm();
+  }
+  $('cancelEdit').onclick=endEdit;
+
+  function amountNum(){ return Number(($('amount').value||'').replace(/[^\d]/g,''))||0; }
+  function showAmount(){ var n=amountNum(); $('amountRead').textContent=n?readWon(n):''; }
+  $('amount').addEventListener('input',function(){
+    var n=amountNum(); this.value=n?n.toLocaleString('ko-KR'):'';
+    $('amtChips').querySelectorAll('.chip').forEach(function(x){x.setAttribute('aria-pressed',Number(x.dataset.v)===n?'true':'false');});
+    showAmount();
+  });
+
+  function nameHint(){
+    var n=$('name').value.trim(), h=$('nameHint'), items=state.entries.filter(function(e){return e.name===n;});
+    if(!n||!items.length){ h.hidden=true; return; }
+    var p=byPerson(items)[0];
+    var lines=p.items.slice(0,3).map(function(e){return fmtDate(e.date)+' '+esc(e.event)+' · '+(e.dir==='in'?'받음':'보냄')+' '+readWon(e.amount);}).join('<br>');
+    var tip='';
+    if(state.dir==='out'&&p.inSum>p.outSum) tip='<br><strong>이분께 '+readWon(p.inSum-p.outSum)+'을 더 받으셨어요.</strong>';
+    h.innerHTML='<strong>'+esc(n)+'</strong> 님과 주고받은 기록 '+p.items.length+'건<br>'+lines+tip;
+    h.hidden=false;
+    if(!state.rel&&p.rel){ var i=RELS.indexOf(p.rel); if(i>=0) $('rel'+i).click(); }
+  }
+  $('name').addEventListener('input',nameHint);
+
+  $('entryForm').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var name=$('name').value.trim(), amt=amountNum(), err='';
+    if(!name) err='누구인지 이름을 적어 주세요.';
+    else if(!state.event) err='무슨 일인지 하나 골라 주세요.';
+    else if(!amt) err='금액을 고르거나 적어 주세요.';
+    $('formError').textContent=err; if(err) return;
+    var vals={date:$('date').value||todayISO(),dir:state.dir,event:state.event,name:name,rel:state.rel||'',amount:amt,memo:$('memo').value.trim()};
+    if(state.editId){
+      var before=state.entries.slice(), eid=state.editId;
+      state.entries=state.entries.map(function(x){ return x.id===eid?Object.assign({},x,vals):x; });
+      persist(); endEdit(); render();
+      toast(name+' 님 기록을 고쳤어요.',function(){ state.entries=before; persist(); render(); });
+      return;
+    }
+    if(state.entries.some(function(e){return e.sample;})) state.entries=state.entries.filter(function(e){return !e.sample;});
+    vals.id='e'+Date.now(); state.entries.push(vals);
+    persist(); resetForm(); render();
+    toast(name+' 님 기록을 장부에 적었어요.');
+    $('name').focus();
+  });
+
+  $('clearSample').onclick=function(){ state.entries=state.entries.filter(function(e){return !e.sample;}); persist(); render(); $('name').focus(); };
+  $('owner').value=state.owner;
+  $('owner').addEventListener('input',function(){ state.owner=this.value.trim(); persist(); });
+  $('search').addEventListener('input',renderPeople);
+  document.querySelectorAll('[data-filter]').forEach(function(b){ b.onclick=function(){ state.filter=b.dataset.filter; document.querySelectorAll('[data-filter]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');}); renderList(); }; });
+
+  function renderPeople(){
+    var q=$('search').value.trim(), box=$('people');
+    if(!q){ box.innerHTML=''; return; }
+    var ps=byPerson(state.entries).filter(function(p){return p.name.indexOf(q)>=0;});
+    if(!ps.length){ box.innerHTML='<p class="empty">"'+esc(q)+'" 님 기록이 아직 없어요.</p>'; return; }
+    box.innerHTML=ps.map(function(p){
+      var d=p.inSum-p.outSum, bal=d>0?'받은 게 '+readWon(d)+' 더 많아요':d<0?'보낸 게 '+readWon(-d)+' 더 많아요':'주고받은 금액이 같아요';
+      return '<div class="person"><h3>'+esc(p.name)+(p.rel?' <span class="note">('+esc(p.rel)+')</span>':'')+'</h3>'+
+        '<div class="totals"><span>받은 돈 <strong class="money in">'+readWon(p.inSum)+'</strong></span><span>보낸 돈 <strong class="money out">'+readWon(p.outSum)+'</strong></span></div>'+
+        '<div class="balance">'+bal+'</div><ul>'+p.items.map(function(e){return '<li>'+fmtDate(e.date)+' '+esc(e.event)+' · '+(e.dir==='in'?'받음':'보냄')+' '+readWon(e.amount)+(e.memo?' · '+esc(e.memo):'')+'</li>';}).join('')+'</ul></div>';
+    }).join('');
+  }
+
+  function renderList(){
+    var list=sortEntries(state.entries).filter(function(e){return state.filter==='all'||e.dir===state.filter;});
+    if(!list.length){ $('list').innerHTML='<li class="empty">아직 적은 내용이 없어요. 왼쪽에서 첫 기록을 적어 보세요.</li>'; return; }
+    $('list').innerHTML=list.map(function(e){
+      return '<li class="row"><span class="when">'+fmtDate(e.date)+'</span>'+
+        '<div class="who"><span class="pill '+e.dir+'">'+(e.dir==='in'?'받음':'보냄')+'</span>'+(e.sample?'<span class="pill sample">예시</span>':'')+
+        '<strong>'+esc(e.name)+'</strong><div class="sub">'+esc(e.event)+(e.rel?' · '+esc(e.rel):'')+(e.memo?' · '+esc(e.memo):'')+'</div></div>'+
+        '<span class="money '+e.dir+'">'+readWon(e.amount)+'</span>'+
+        '<div class="btns"><button type="button" class="edit" data-id="'+esc(e.id)+'" id="edit-'+esc(e.id)+'">고치기</button>'+
+        '<button type="button" class="del" data-id="'+esc(e.id)+'" id="del-'+esc(e.id)+'">지우기</button></div></li>';
+    }).join('');
+  }
+  $('list').addEventListener('click',function(ev){
+    var ed=ev.target.closest('.edit'); if(ed){ startEdit(ed.dataset.id); return; }
+    var b=ev.target.closest('.del'); if(!b) return;
+    if(state.editId===b.dataset.id&&b.classList.contains('armed')) endEdit();
+    if(!b.classList.contains('armed')){ b.classList.add('armed'); b.textContent='정말 지우기'; setTimeout(function(){ if(b.isConnected){b.classList.remove('armed');b.textContent='지우기';} },4000); return; }
+    var prev=state.entries.slice(); state.entries=state.entries.filter(function(e){return e.id!==b.dataset.id;}); persist(); render();
+    toast('기록을 지웠어요.',function(){ state.entries=prev; persist(); render(); });
+  });
+
+  function render(){
+    var t=totals(state.entries);
+    $('sumIn').textContent=readWon(t.inSum); $('cntIn').textContent=t.inCnt+'건';
+    $('sumOut').textContent=readWon(t.outSum); $('cntOut').textContent=t.outCnt+'건';
+    $('sumDiff').textContent=readWon(t.inSum-t.outSum); $('cntPeople').textContent=t.people+'명과 주고받음';
+    $('sampleBar').hidden=!state.entries.some(function(e){return e.sample;});
+    $('nameList').innerHTML=byPerson(state.entries).map(function(p){return '<option value="'+esc(p.name)+'">';}).join('');
+    renderList(); renderPeople();
+  }
+
+  var tTimer;
+  function toast(msg,undo){
+    $('toastMsg').textContent=msg; var a=$('toastAct'); a.hidden=!undo; a.onclick=function(){ if(undo) undo(); $('toast').hidden=true; };
+    $('toast').hidden=false; clearTimeout(tTimer); tTimer=setTimeout(function(){$('toast').hidden=true;},undo?7000:3500);
+  }
+
+  var inViewer=!!(window.claude&&typeof window.claude.use==='function');
+  var dlPromise=inViewer?Promise.resolve(window.claude.use('downloads')).catch(function(){return null;}):Promise.resolve(undefined);
+  dlPromise.then(function(dl){ if(dl===null){ $('exportBtn').disabled=true; $('blankBtn').disabled=true; $('dlNote').textContent='이 화면에서는 파일 저장이 지원되지 않아요. Claude 웹이나 앱에서 열어 주세요.'; } });
+
+  function stamp(){ return todayISO().replace(/-/g,''); }
+  async function saveWorkbook(wb,filename){
+    if(typeof ExcelJS==='undefined'){ toast('엑셀 도구를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침해 주세요.'); return; }
+    var buf=new Uint8Array(await wb.xlsx.writeBuffer());
+    var dl=await dlPromise;
+    if(dl===undefined){
+      var url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+      var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},2000);
+      toast('엑셀 파일을 저장했어요.'); return;
+    }
+    if(!dl){ toast('이 화면에서는 파일 저장이 지원되지 않아요.'); return; }
+    try{ await dl.save({filename:filename,data:buf}); toast('엑셀 파일을 저장했어요.'); }
+    catch(e){ var c=e&&e.code; toast(c==='declined'?'저장을 취소했어요.':c==='rate_limited'?'잠시 뒤에 다시 눌러 주세요.':'파일을 저장하지 못했어요. 다시 시도해 주세요.'); }
+  }
+  $('exportBtn').onclick=function(){
+    if(typeof ExcelJS==='undefined') return saveWorkbook(null);
+    var real=state.entries.filter(function(e){return !e.sample;}), use=real.length?real:state.entries;
+    saveWorkbook(buildWorkbook(ExcelJS,use,state.owner,false),(state.owner?state.owner+'_':'')+'경조사비장부_'+stamp()+'.xlsx');
+  };
+  $('blankBtn').onclick=function(){
+    if(typeof ExcelJS==='undefined') return saveWorkbook(null);
+    saveWorkbook(buildWorkbook(ExcelJS,[],state.owner,true),'경조사비장부_빈양식.xlsx');
+  };
+  $('importFile').addEventListener('change',async function(){
+    var f=this.files&&this.files[0]; this.value=''; if(!f) return;
+    if(typeof ExcelJS==='undefined'){ toast('엑셀 도구를 불러오지 못했어요. 새로고침해 주세요.'); return; }
+    try{
+      var wb=new ExcelJS.Workbook(); await wb.xlsx.load(await f.arrayBuffer());
+      var res=parseWorkbook(wb), prev={entries:state.entries.slice(),owner:state.owner};
+      state.entries=res.entries; if(res.owner){state.owner=res.owner;$('owner').value=res.owner;}
+      persist(); render();
+      toast(f.name+'에서 '+res.entries.length+'건을 불러왔어요.',function(){ state.entries=prev.entries; state.owner=prev.owner; $('owner').value=prev.owner; persist(); render(); });
+    }catch(e){ toast('이 파일은 읽을 수 없어요. 이 사이트에서 저장한 경조사비 장부 엑셀인지 확인해 주세요.'); }
+  });
+
+  render();
+  setDir(state.dir);
+})(); }
+</script>
+</body>
+</html>
